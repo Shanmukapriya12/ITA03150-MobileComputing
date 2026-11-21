@@ -1,0 +1,93 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Step 1: Define Walsh-Hadamard codes
+W = np.array([
+    [1,  1,  1,  1],
+    [1, -1,  1, -1],
+    [1,  1, -1, -1],
+    [1, -1, -1,  1]
+])
+
+# Step 2: Define user data
+bits = {
+    1: [1, 0, 1, 1],
+    2: [0, 0, 1, 0],
+    3: [1, 1, 0, 1]
+}
+
+L = W.shape[1]
+nbits = 4
+
+def bpsk(b):
+    return 2 * np.array(b) - 1
+
+# Step 3: Spreading
+tx = np.zeros(nbits * L)
+spread_signals = {}
+
+for u, b in bits.items():
+    spread = np.repeat(bpsk(b), L) * np.tile(W[u], nbits)
+    spread_signals[u] = spread
+
+    print(f"User {u} data : {b}")
+    print(f"User {u} spread : {spread.astype(int)}")
+
+    tx += spread
+
+# Step 4: Composite transmitted signal
+print("\nComposite transmitted signal:\n", tx.astype(int))
+
+# Step 5: Despreading
+recovered = {}
+
+print("\nDespreading at receiver:")
+
+for u, b in bits.items():
+    corr = (tx * np.tile(W[u], nbits)).reshape(nbits, L).sum(axis=1) / L
+    rec = (corr > 0).astype(int)
+    recovered[u] = rec
+
+    print(f"User {u} correlator: {corr} -> bits {rec.tolist()} "
+          f"{'OK' if rec.tolist() == b else 'ERROR'}")
+
+# Step 6: Plot graphs
+fig, axes = plt.subplots(3, 1, figsize=(12, 10))
+
+# Graph 1: Original data bits
+for u, b in bits.items():
+    axes[0].step(range(nbits), b, where='mid',
+                 marker='o', label=f'User {u}')
+
+axes[0].set_title("Original Data Bits of Three Users")
+axes[0].set_xlabel("Bit Index")
+axes[0].set_ylabel("Data Bits")
+axes[0].set_yticks([0, 1])
+axes[0].legend()
+axes[0].grid(True)
+
+# Graph 2: Composite transmitted signal
+axes[1].step(range(len(tx)), tx, where='mid',
+             marker='o', label='Composite Signal')
+
+axes[1].set_title("CDMA Composite Transmitted Signal")
+axes[1].set_xlabel("Chip Index")
+axes[1].set_ylabel("Amplitude")
+axes[1].legend()
+axes[1].grid(True)
+
+# Graph 3: Recovered data bits
+for u, rec in recovered.items():
+    axes[2].step(range(nbits), rec, where='mid',
+                 marker='o', label=f'User {u}')
+
+axes[2].set_title("Recovered Data Bits After Despreading")
+axes[2].set_xlabel("Bit Index")
+axes[2].set_ylabel("Recovered Bits")
+axes[2].set_yticks([0, 1])
+axes[2].legend()
+axes[2].grid(True)
+
+plt.tight_layout()
+plt.show()
