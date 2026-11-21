@@ -1,0 +1,97 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Step 1: Initialize parameters
+rng = np.random.default_rng(7)
+
+D = 2000.0
+P0 = -30.0
+n = 3.5
+sigma = 4.0
+
+# Step 2: Mobile position
+x = np.arange(10, D, 5.0)
+
+# Step 3: Calculate RSS
+def rss(d, shadow):
+    return P0 - 10 * n * np.log10(d) + shadow
+
+r1 = rss(x, rng.normal(0, sigma, x.size))
+r2 = rss(D - x, rng.normal(0, sigma, x.size))
+
+# Step 4: Handoff simulation
+def run(H):
+    serving = 1
+    handoffs = 0
+    log = []
+
+    for xi, a, b in zip(x, r1, r2):
+        if serving == 1 and b > a + H:
+            serving = 2
+            handoffs += 1
+            log.append((float(xi), '1->2'))
+
+        elif serving == 2 and a > b + H:
+            serving = 1
+            handoffs += 1
+            log.append((float(xi), '2->1'))
+
+    return handoffs, log
+
+# Step 5: Calculate results
+h_values = [0, 2, 4, 6, 8, 10]
+handoff_results = []
+
+print(f"{'H (dB)':>7}{'Handoffs':>10}{'Ping-pongs':>12}")
+
+for H in h_values:
+    h, log = run(H)
+    handoff_results.append(h)
+    print(f"{H:7d}{h:10d}{max(h-1, 0):12d}")
+
+# Step 6: Display handoff events for H = 6 dB
+h, log = run(6)
+
+print("\nHandoff events with H = 6 dB (position in metres):")
+print(log)
+
+# Step 7: Plot all three graphs
+fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+
+# Graph 1: RSS for H = 0 dB
+axes[0].plot(x, r1, label='RSS BS1')
+axes[0].plot(x, r2, label='RSS BS2')
+
+for xi, event in run(0)[1]:
+    axes[0].axvline(x=xi, color='red', alpha=0.6, linewidth=0.8)
+
+axes[0].set_title(f'H = 0 dB: {run(0)[0]} handoffs')
+axes[0].set_xlabel('Position (m)')
+axes[0].set_ylabel('RSS (dBm)')
+axes[0].legend()
+axes[0].grid(True)
+
+# Graph 2: RSS for H = 6 dB
+axes[1].plot(x, r1, label='RSS BS1')
+axes[1].plot(x, r2, label='RSS BS2')
+
+for xi, event in run(6)[1]:
+    axes[1].axvline(x=xi, color='red', alpha=0.6, linewidth=0.8)
+
+axes[1].set_title(f'H = 6 dB: {run(6)[0]} handoffs')
+axes[1].set_xlabel('Position (m)')
+axes[1].set_ylabel('RSS (dBm)')
+axes[1].legend()
+axes[1].grid(True)
+
+# Graph 3: Handoffs vs Hysteresis
+axes[2].bar(h_values, handoff_results, width=1.5, color='darkorange')
+axes[2].set_title('Handoffs vs hysteresis')
+axes[2].set_xlabel('Hysteresis H (dB)')
+axes[2].set_ylabel('Number of handoffs')
+axes[2].set_xticks(h_values)
+axes[2].grid(True, axis='y', alpha=0.4)
+
+plt.tight_layout()
+plt.show()
